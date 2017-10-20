@@ -26,7 +26,7 @@ library(lubridate)
 
 ####################################################################################################################################################
 
-#                                                                    IMPORT
+#                                                                   IMPORT
 
 ####################################################################################################################################################
 nyc <- read_csv("NYPD_Complaint_Data_Historic.csv")
@@ -53,7 +53,6 @@ bad_vars <- names(nyc) %in% c("CRM_ATPT_CPTD_CD", "ADDR_PCT_CD", "CMPLNT_NUM", "
 nyc <- nyc[!bad_vars]
 
 #########################################################     INDICATOR VARIABLES   #################################################################
-
 #Reduce parks to binary
   #if it occurred in a park, doesn't matter which park, -> 1
   #if it did not occur in a park -> 0
@@ -82,28 +81,29 @@ nyc$HADEVELOPT[nyc$HADEVELOPT!=0] <- 1
 nyc$JURIS_DESC[nyc$JURIS_DESC=='N.Y. POLICE DEPT'] <- 1
 nyc$JURIS_DESC[nyc$JURIS_DESC!=1] <- 0
 
-#Reduce location of occurance description to binary
-  #if inside -> 1
-  #if anything else -> 0 
-      # as.data.frame(table(nyc$LOC_OF_OCCUR_DESC))
-      # Var1    Freq
-      # 1    FRONT OF 1276501
-      # 2      INSIDE 2731916
-      # 3 OPPOSITE OF  151301
-      # 4     OUTSIDE    2962
-      # 5     REAR OF  118900
-
 #########################################################         LOCATION     #####################################################################
 # ~~~~~~~~~~~~~~~~~~~~~    MISSING DATA    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#based on first 100 entries, I'm setting anything with a premise description as Street, Park/playground, or Gas Station as outside
-nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='STREET'] <- 0
-nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='PARK/PLAYGROUND'] <- 0
-nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='GAS STATION'] <- 0
+#Reduce location of occurance description to binary
+#if inside -> 1
+#if anything else -> 0 
+# as.data.frame(table(nyc$LOC_OF_OCCUR_DESC))
+# Var1    Freq
+# 1    FRONT OF 1276501
+# 2      INSIDE 2731916
+# 3 OPPOSITE OF  151301
+# 4     OUTSIDE    2962
+# 5     REAR OF  118900
+
 #define all othe others
 nyc$LOC_OF_OCCUR_DESC[nyc$LOC_OF_OCCUR_DESC!='INSIDE'] <- 0
 nyc$LOC_OF_OCCUR_DESC[nyc$LOC_OF_OCCUR_DESC=='INSIDE'] <- 1
 #there are still a bunch of NAs...277,996 to be exact
+sum(is.na(nyc$LOC_OF_OCCUR_DESC))
+#based on first 100 entries, I'm setting anything with a premise description as Street, Park/playground, or Gas Station as outside
+nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='STREET'] <- 0
+nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='PARK/PLAYGROUND'] <- 0
+nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='GAS STATION'] <- 0
 sum(is.na(nyc$LOC_OF_OCCUR_DESC))
 #which type of premise descriptions have NA as location description....
 unique(nyc$PREM_TYP_DESC[is.na(nyc$LOC_OF_OCCUR_DESC)])
@@ -140,12 +140,14 @@ na_premises <- unique(nyc$PREM_TYP_DESC[is.na(nyc$LOC_OF_OCCUR_DESC)])
 # [61] "VARIETY STORE"                "TRAMWAY"                      "FERRY/FERRY TERMINAL"         "PHOTO/COPY"                  
 # [65] "VIDEO STORE"                  "SHOE"                         "MOSQUE"                       "LOAN COMPANY" 
 
+
+
 #going to set the following as outside....
 na_prem_outside <- na_premises[c(2,4,6,8,12:16,23,27,29:33,35,38,55,57,61,62)]
 na_premises[c(2,4,6,8,12:16,23,27,29:33,35,38,55,57,61,62)]
 
-nyc$LOC_OF_OCCUR_DESC[with(nyc, nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC %in% na_prem_outside & is.na(nyc$LOC_OF_OCCUR_DESC)])] <- 0
-
+nyc$LOC_OF_OCCUR_DESC[with(nyc, nyc$PREM_TYP_DESC %in% na_prem_outside & is.na(nyc$LOC_OF_OCCUR_DESC))] <- 0
+sum(is.na(nyc$LOC_OF_OCCUR_DESC))
 # #set these as the inside...
 na_prem_inside <-  na_premises[c(3,5,7,9:11,17:22,24:26,28,34,36,37,39:54,56,58:60,63,64,66,67)]
 na_prem_inside
@@ -165,6 +167,7 @@ as.data.frame(table(nyc$PD_DESC[is.na(nyc$LOC_OF_OCCUR_DESC)]))
 nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='OTHER'] <- 1
 #no more 'missing' data and all locations set to either inside (1) or outside (0)...whew. 
 
+sum(is.na(nyc$LOC_OF_OCCUR_DESC))
 
 ############################################################        TIME      #######################################################################
 
@@ -185,10 +188,10 @@ nyc <- subset(nyc, nyc$Year %in% yearsIWant)
 nyc$MonthDay <- paste( nyc$Month, nyc$Day, sep="-" )
 
 #deal with date...convert to standard format
-nyc$CMPLNT_FR_DT <- as.Date(nyc$CMPLNT_FR_DT, "%m/%d/%Y")
+nyc$Date <- as.Date(nyc$CMPLNT_FR_DT, "%m/%d/%Y")
 
 #find out day of week
-nyc$DayName <-  weekdays(as.Date(nyc$CMPLNT_FR_DT))
+nyc$DayName <-  weekdays(as.Date(nyc$Date))
 
 #find out weekday or weekend
 daysoftheweek <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
@@ -209,11 +212,6 @@ nyc$Holiday <- as.integer(nyc$MonthDay %in% holidays_list, nyc$MonthDay %in% eas
     # Var1    Freq
     # 1    0 5375860
     # 2    1   93413
-
-#reorder the columns to put similar variables together 
-nyc <- nyc[,c("CMPLNT_FR_DT", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "PD_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PREM_TYP_DESC", "PARKS_NM", "HADEVELOPT", "Latitude", "Longitude")]
-
-
 
 ############################################################       CRIME       #######################################################################
 #Create new crime variable
@@ -251,21 +249,19 @@ for (i in 1:nrow(nyc)){
   }
 }
 
-sum(is.na(nyc$OFNS_DESC))  
-  
-#no more OFNS_DESC NAs. Yay!
-as.data.frame(table(nyc$OFNS_DESC))
+# sum(is.na(nyc$OFNS_DESC))  
+#   
+# #no more OFNS_DESC NAs. Yay!
+# as.data.frame(table(nyc$OFNS_DESC))
+
+#Last Step
+#reorder the columns to put similar variables together 
+#don't care about Minute or Second, so not including those
+#nixing PD_DESC since I'm going to use OFNS_DESC as my response variable
+nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PREM_TYP_DESC", "PARKS_NM", "HADEVELOPT", "Latitude", "Longitude")]
+
+#save cleaned data so I don't have to do all this again
+write.csv(nyc_clean, "NYPD_Crime_Data_CLEAN.csv")
 
 
 
-####################################################################################################################################################
-
-#                                                               PLOTTING CODE
-
-####################################################################################################################################################
-#goal: split CMPLNT_FR_DT into three columns: Year, Month, Day
-# 
-# ggplot(data=nyc, mapping=aes(x=BORO_NM, fill=BORO_NM))+geom_bar()
-# ggplot(data=nyc, mapping=aes(x=LAW_CAT_CD, fill=LAW_CAT_CD))+geom_bar()+facet_wrap(~BORO_NM)
-# 
-# ggplot(data=nyc, mapping=aes(x=))
