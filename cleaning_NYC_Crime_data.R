@@ -1,9 +1,14 @@
 ########
   # Author: Zane Wolf
   # Date Created: 9/25/2017
-  # Purpose: To explore and clean 
+  # Purpose: To explore and clean NYC Crime data file. 
+    # Transformed some categorical variables to indicator variables
+    # Filled in or deleted mising Location data
+    # Organized and parsed time variables, added indicator variables
+    # Filled in missing Crime Data
 
-  # Date Updated: 
+
+  # Date Updated: 10/20/2017
 
 ########
 
@@ -262,6 +267,8 @@ nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", 
 
 #save cleaned data so I don't have to do all this again
 write.csv(nyc_clean, "NYPD_Crime_Data_CLEAN.csv")
+
+
 
 
 
