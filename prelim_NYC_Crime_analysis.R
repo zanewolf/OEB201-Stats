@@ -7,7 +7,11 @@
 
 ########
 
-#housekeeping
+####################################################################################################################################################
+
+#                                                                 HOUSEKEEPING
+
+####################################################################################################################################################
 rm(list=ls())
 options(stringsAsFactors = FALSE)
 
@@ -20,32 +24,35 @@ library(plyr)
 library(stringr)
 library(lubridate)
 
-###############################################
+####################################################################################################################################################
 
-#start Work
+#                                                                    IMPORT
 
-###############################################
+####################################################################################################################################################
 nyc <- read_csv("NYPD_Complaint_Data_Historic.csv")
 View(nyc)
 
 headers <- names(nyc)
 
-###############################################
+####################################################################################################################################################
 
-#Data Cleaning
+#                                                                DATA CLEANING
 
-###############################################
+####################################################################################################################################################
 
-# delete the following columns: CMPLNT_TO_DT, CMPLNT_TO_TM, RPT_DT, X_COORD_CD, Y_COORD_CD, 
-# and Lat_Lon
-
-bad_vars <- names(nyc) %in% c("CMPLNT_TO_DT", "CMPLNT_TO_TM", "RPT_DT", "X_COORD_CD", "Y_COORD_CD", "Lat_Lon")
-nyc <- nyc[!bad_vars]
 
 #select for Completed Crimes
 as.data.frame(table(nyc$CRM_ATPT_CPTD_CD)) #find out just how many were attempted....negligible, ~90,000 out of 5.5million
 unique(nyc$CRM_ATPT_CPTD_CD) #Completed, attempted, NA
 nyc <- subset(nyc, CRM_ATPT_CPTD_CD=="COMPLETED")
+
+# delete the following columns: CMPLNT_TO_DT, CMPLNT_TO_TM, RPT_DT, X_COORD_CD, Y_COORD_CD, 
+# and Lat_Lon
+
+bad_vars <- names(nyc) %in% c("CRM_ATPT_CPTD_CD", "ADDR_PCT_CD", "CMPLNT_NUM", "CMPLNT_TO_DT", "CMPLNT_TO_TM", "RPT_DT", "X_COORD_CD", "Y_COORD_CD", "Lat_Lon")
+nyc <- nyc[!bad_vars]
+
+#########################################################     INDICATOR VARIABLES   #################################################################
 
 #Reduce parks to binary
   #if it occurred in a park, doesn't matter which park, -> 1
@@ -86,7 +93,8 @@ nyc$JURIS_DESC[nyc$JURIS_DESC!=1] <- 0
       # 4     OUTSIDE    2962
       # 5     REAR OF  118900
 
-#MISSING DATA ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#########################################################         LOCATION     #####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~    MISSING DATA    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #based on first 100 entries, I'm setting anything with a premise description as Street, Park/playground, or Gas Station as outside
 nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='STREET'] <- 0
@@ -153,16 +161,108 @@ nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='SHOE'] <- 1
 as.data.frame(table(nyc$PD_DESC[is.na(nyc$LOC_OF_OCCUR_DESC)])) 
 # a freaking lot
 # lets just set it all to outside, the crimes with high frequencies (>500 occurrences) are ones that occur in 'open areas'
+#--makes sense, nondescript open area as 'other'
 nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='OTHER'] <- 1
 #no more 'missing' data and all locations set to either inside (1) or outside (0)...whew. 
 
+
+############################################################        TIME      #######################################################################
+
 #Time for Time
+#want to bin time into 1-hour segments
+#divide Hour:Minute:Second into three separate columns
+nyc <- separate(nyc, CMPLNT_FR_TM, sep= ":", into=c("Hour", "Minute", "Second"), fill='right', remove=FALSE)
+
+#separate date, similarly, into Month, Day, Year
+nyc <- separate(nyc, CMPLNT_FR_DT, sep= "/", into=c("Month", "Day", "Year"), fill='right', remove=FALSE)
+
+#DATA DELETION 
+#this database was supposed to be 2006-2016, but there are years here from 1905 and 1015 (prob a typo). Gonna delete the few thousand from before 2005
+#2005 is also a little skewed, though. Even though it has 10,000+ events, all the other years have nearly half a million data points. 
+yearsIWant <- c("2005", "2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016")
+nyc <- subset(nyc, nyc$Year %in% yearsIWant)
+#create month-day column for use in holiday determination
+nyc$MonthDay <- paste( nyc$Month, nyc$Day, sep="-" )
+
+#deal with date...convert to standard format
+nyc$CMPLNT_FR_DT <- as.Date(nyc$CMPLNT_FR_DT, "%m/%d/%Y")
+
+#find out day of week
+nyc$DayName <-  weekdays(as.Date(nyc$CMPLNT_FR_DT))
+
+#find out weekday or weekend
+daysoftheweek <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+daysoftheweekend <- c("Saturday", "Sunday")
+
+#create indicator variable, where 0 is a weekday and 1 is a weekend. 
+nyc$Weekend <- as.integer(nyc$DayName %in% daysoftheweekend)
+
+#some holidays are always the same day
+holidays_list <- c("01-01", "02-14", "07-04", "09-04", "10-31", "12-25" )
+easter_list <- c("2006-04-23", "2007-04-08", "2008-03-27", "2009-04-19", "2010-04-04", "2011-04-24", "2012-04-15", "2013-05-05", "2014-04-20", "2015-04-12")
+as.data.frame(table(nyc$Year))
+thanksgiving_list <- c("2005-11-24", "2006-11-23", "2007-11-22", "2008-11-27", "2009-11-26", "2010-11-25", "2011-11-24", "2012-11-22", "2013-11-28", "2014-11-27", "2015-11-26", "2016-11-24")
+
+#create Holiday indicator variable, 0 if not holiday, 1 if it matches any of the holidays specified above
+nyc$Holiday <- as.integer(nyc$MonthDay %in% holidays_list, nyc$MonthDay %in% easter_list, nyc$CMPLNT_FR_DT %in% thanksgiving_list)
+    # > as.data.frame(table(nyc$Holiday))
+    # Var1    Freq
+    # 1    0 5375860
+    # 2    1   93413
+
+#reorder the columns to put similar variables together 
+nyc <- nyc[,c("CMPLNT_FR_DT", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "PD_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PREM_TYP_DESC", "PARKS_NM", "HADEVELOPT", "Latitude", "Longitude")]
 
 
-# na_premises[!(na_premises %in% na_prem_outside | na_premises %in% na_prem_inside)]
-# 
-# unique(nyc$PREM_TYP_DESC[is.na(nyc$LOC_OF_OCCUR_DESC)])
-# nyc$LOC_OF_OCCUR_DESC[c(na_premises[])] <- 0
+
+############################################################       CRIME       #######################################################################
+#Create new crime variable
+unique(nyc$OFNS_DESC) #...71 different classifiers
+unique(nyc$PD_DESC) #...410 different classifiers
+unique(nyc$LAW_CAT_CD) #...3 different classifiers
+
+#well, 71 is a lot better than 410...
+#I'm not sure there's anything between 3 and 71 without loosing a lot of data. 71 will have to do. 
+# so I guess I'm looking at a hierarchical (between boros) multinomial (unordered categorial crime type) model? 
+
+# ~~~~~~~~~~~~~~~~~~~~~    MISSING DATA    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#oh look...NAs. Yay. 
+# sum(is.na(nyc$OFNS_DESC))
+# as.data.frame(table(nyc$PD_DESC[is.na(nyc$OFNS_DESC)]))
+#for the 56 cases where the OFNS_DESC is NA but the PD_DESC is not, I could substitute the PD_DESC for the OFNS_DESC
+#...or I could go through and find previous incidences where the PD_DESC is the same OFNS_DESC is not NA, and substitute that OFNS_DESC for the NA
+#probably the better way to go....but probs a lot more involved. Ugh. 
+
+#solution....blimey this takes forever. Just FYI. 
+#Feel free to delete the message(i) lines if you don't want to see a bazilion numbers on your screen
+for (i in 1:nrow(nyc)){
+  if (is.na(nyc$OFNS_DESC[i])){
+    crimetype=nyc$PD_DESC[i]
+    othercrimetypes=unique(nyc$OFNS_DESC[nyc$PD_DESC==crimetype])
+    if (length(othercrimetypes)==2){
+      nyc$OFNS_DESC[i] <- othercrimetypes[2]
+      message(i)
+    }
+    else if (is.na(othercrimetypes)){
+      nyc$OFNS_DESC[i] <- nyc$PD_DESC[i]
+      message(i)
+    }
+  }
+}
+
+sum(is.na(nyc$OFNS_DESC))  
+  
+#no more OFNS_DESC NAs. Yay!
+as.data.frame(table(nyc$OFNS_DESC))
+
+
+
+####################################################################################################################################################
+
+#                                                               PLOTTING CODE
+
+####################################################################################################################################################
 #goal: split CMPLNT_FR_DT into three columns: Year, Month, Day
 # 
 # ggplot(data=nyc, mapping=aes(x=BORO_NM, fill=BORO_NM))+geom_bar()
