@@ -212,7 +212,7 @@ as.data.frame(table(nyc$Year))
 thanksgiving_list <- c("2005-11-24", "2006-11-23", "2007-11-22", "2008-11-27", "2009-11-26", "2010-11-25", "2011-11-24", "2012-11-22", "2013-11-28", "2014-11-27", "2015-11-26", "2016-11-24")
 
 #create Holiday indicator variable, 0 if not holiday, 1 if it matches any of the holidays specified above
-nyc$Holiday <- as.integer(nyc$MonthDay %in% holidays_list, nyc$MonthDay %in% easter_list, nyc$CMPLNT_FR_DT %in% thanksgiving_list)
+nyc$Holiday <- as.integer(nyc$MonthDay %in% holidays_list, nyc$CMPLNT_FR_DT %in% easter_list, nyc$CMPLNT_FR_DT %in% thanksgiving_list)
     # > as.data.frame(table(nyc$Holiday))
     # Var1    Freq
     # 1    0 5375860
