@@ -100,6 +100,9 @@ nyc$JURIS_DESC[nyc$JURIS_DESC!=1] <- 0
 # 4     OUTSIDE    2962
 # 5     REAR OF  118900
 
+sum(is.na(nyc$BORO_NM)) #75
+nyc <- nyc[!with(nyc, is.na(nyc$BORO_NM) | is.na(nyc$CMPLNT_FR_TM)),]
+
 #define all othe others
 nyc$LOC_OF_OCCUR_DESC[nyc$LOC_OF_OCCUR_DESC!='INSIDE'] <- 0
 nyc$LOC_OF_OCCUR_DESC[nyc$LOC_OF_OCCUR_DESC=='INSIDE'] <- 1
@@ -263,12 +266,16 @@ for (i in 1:nrow(nyc)){
 #reorder the columns to put similar variables together 
 #don't care about Minute or Second, so not including those
 #nixing PD_DESC since I'm going to use OFNS_DESC as my response variable
-nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PREM_TYP_DESC", "PARKS_NM", "HADEVELOPT", "Latitude", "Longitude")]
+nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PARKS_NM", "HADEVELOPT")]
 
+
+# sum(is.na(nyc_clean$LAW_CAT_CD)) 
 #save cleaned data so I don't have to do all this again
 write.csv(nyc_clean, "NYPD_Crime_Data_CLEAN.csv")
 
-
+# as.data.frame(table(is.na(nyc_clean)))
+# 
+# nyc_small <- subset(nyc_clean, nyc_clean$Year %in% c(2006))
 
 
 

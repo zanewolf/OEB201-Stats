@@ -24,6 +24,12 @@ library(tidyverse)
 library(plyr)
 library(stringr)
 library(lubridate)
+library(rstan)
+library(rstanarm)
+library(rstantools)
+library(mlogit)
+library(nn)
+
 
 ####################################################################################################################################################
 
@@ -37,6 +43,26 @@ headers <- names(nyc)
 
 ####################################################################################################################################################
 
+#                                                                   MODEL 
+
+####################################################################################################################################################
+#let's just include everything, shall we
+#lets cut this down to just a few years, make it easier to run
+
+nyc_small <- subset(nyc, nyc$Year %in% c(2006))
+
+# m1 <- stan_glm(formula= LAW_CAT_CD ~ as.factor(Hour)+BORO_NM,data=nyc_small)
+# m1 <- stan_glm(OFNS_DESC ~ Month, family=gaussian, data=nyc_small)
+
+m1 <- stan_glm(LAW_CAT_CD ~ BORO_NM + Hour, data = nyc_small)
+
+m2 <- multinom(LAW_CAT_CD ~ BORO_NM + Hour, data = nyc_small)
+
+
+
+
+####################################################################################################################################################
+
 #                                                               PLOTTING CODE
 
 ####################################################################################################################################################
@@ -44,7 +70,11 @@ headers <- names(nyc)
 
 #goal: split CMPLNT_FR_DT into three columns: Year, Month, Day
 # 
-# ggplot(data=nyc, mapping=aes(x=BORO_NM, fill=BORO_NM))+geom_bar()
-# ggplot(data=nyc, mapping=aes(x=LAW_CAT_CD, fill=LAW_CAT_CD))+geom_bar()+facet_wrap(~BORO_NM)
+ggplot(data=nyc, mapping=aes(x=BORO_NM, fill=BORO_NM))+geom_bar()
+ggplot(data=nyc, mapping=aes(x=LAW_CAT_CD, fill=LAW_CAT_CD))+geom_bar()+facet_wrap(~BORO_NM)
+
+
+
+ggplot(data=nyc, mapping=aes(x=MonthDay, y=))
 # 
 # ggplot(data=nyc, mapping=aes(x=))
