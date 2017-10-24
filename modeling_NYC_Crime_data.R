@@ -28,7 +28,7 @@ library(rstan)
 library(rstanarm)
 library(rstantools)
 library(mlogit)
-library(nn)
+library(nnet)
 
 
 ####################################################################################################################################################
@@ -39,7 +39,7 @@ library(nn)
 nyc <- read_csv("NYPD_Crime_Data_CLEAN.csv")
 View(nyc)
 
-headers <- names(nyc)
+names(nyc)
 
 ####################################################################################################################################################
 
@@ -47,14 +47,19 @@ headers <- names(nyc)
 
 ####################################################################################################################################################
 #let's just include everything, shall we
-#lets cut this down to just a few years, make it easier to run
+#lets cut this down to just one year, make it easier to run
 
 nyc_small <- subset(nyc, nyc$Year %in% c(2006))
 
 # m1 <- stan_glm(formula= LAW_CAT_CD ~ as.factor(Hour)+BORO_NM,data=nyc_small)
 # m1 <- stan_glm(OFNS_DESC ~ Month, family=gaussian, data=nyc_small)
 
+#Check for NAs
+sum(is.na(nyc))
+#THERE ARE NO NAs!
+
 m1 <- stan_glm(LAW_CAT_CD ~ BORO_NM + Hour, data = nyc_small)
+m1b <- stan_glmer(LAW_CAT_CD ~ BORO_NM + (1|Hour), data = nyc_small)
 
 m2 <- multinom(LAW_CAT_CD ~ BORO_NM + Hour, data = nyc_small)
 
