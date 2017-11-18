@@ -39,6 +39,7 @@ View(nyc)
 
 headers <- names(nyc)
 
+
 ####################################################################################################################################################
 
 #                                                                DATA CLEANING
@@ -187,10 +188,11 @@ nyc <- separate(nyc, CMPLNT_FR_TM, sep= ":", into=c("Hour", "Minute", "Second"),
 #separate date, similarly, into Month, Day, Year
 nyc <- separate(nyc, CMPLNT_FR_DT, sep= "/", into=c("Month", "Day", "Year"), fill='right', remove=FALSE)
 
+as.data.frame(table(nyc$Year))
 #DATA DELETION 
-#this database was supposed to be 2006-2016, but there are years here from 1905 and 1015 (prob a typo). Gonna delete the few thousand from before 2005
+#this database was supposed to be 2006-2016, but there are years here from 1905 and 1015 (prob a typo). Gonna delete the few thousand from before 2006
 #2005 is also a little skewed, though. Even though it has 10,000+ events, all the other years have nearly half a million data points. 
-yearsIWant <- c("2005", "2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016")
+yearsIWant <- c("2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016")
 nyc <- subset(nyc, nyc$Year %in% yearsIWant)
 #create month-day column for use in holiday determination
 nyc$MonthDay <- paste( nyc$Month, nyc$Day, sep="-" )
@@ -222,7 +224,8 @@ nyc$Holiday <- as.integer(nyc$MonthDay %in% holidays_list, nyc$CMPLNT_FR_DT %in%
     # 2    1   93413
 
 ############################################################       CRIME       #######################################################################
-#Create new crime variable
+
+
 unique(nyc$OFNS_DESC) #...71 different classifiers
 unique(nyc$PD_DESC) #...410 different classifiers
 unique(nyc$LAW_CAT_CD) #...3 different classifiers
@@ -266,12 +269,104 @@ for (i in 1:nrow(nyc)){
 #reorder the columns to put similar variables together 
 #don't care about Minute or Second, so not including those
 #nixing PD_DESC since I'm going to use OFNS_DESC as my response variable
-nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PARKS_NM", "HADEVELOPT")]
+nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", 
+      "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", 
+      "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PARKS_NM", "HADEVELOPT")]
 
 
+####################################################################################################################################################
+
+#                                                                   CRIME CONDENSATION 
+
+####################################################################################################################################################
+#need to par 72 crime types down to something manageable. 
+
+#Combine similar crimes
+#time to learn some apply functions
+for (i in 1906650:nrow(nyc_clean)){
+  if (nyc_clean$OFNS_DESC[i] == "ADMINISTRATIVE CODE" || nyc_clean$OFNS_DESC == "ADMINISTRATIVE CODES"){
+    nyc_clean$OFNS_DESC[i] <- "MISCELLANEOUS PENAL LAW"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "BURGLAR'S TOOLS" || nyc_clean$OFNS_DESC[i] == "BURGLARY"){
+    nyc_clean$OFNS_DESC[i] <- "BURGLARY RELATED"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "FRAUDS" || nyc_clean$OFNS_DESC[i] == "FRAUDULENT ACCOSTING" || nyc_clean$OFNS_DESC[i] == "OFFENSES INVOLVING FRAUD"){
+    nyc_clean$OFNS_DESC[i] <- "FRAUD RELATED"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "GRAND LARCENY" || nyc_clean$OFNS_DESC[i] == "PETIT LARCENY"){
+    nyc_clean$OFNS_DESC[i] <- "GRAND/PETIT LARCENY"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "GRAND LARCENY OF MOTOR VEHICLE" || nyc_clean$OFNS_DESC[i] == "PETIT LARCENY OF MOTOR VEHICLE"){
+    nyc_clean$OFNS_DESC[i] <- "VEHICULAR GRAND/PETIT LARCENY"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "HOMICIDE-NEGLIGENT-VEHICLE" || nyc_clean$OFNS_DESC[i] == "HOMICIDE-NEGLIGENT,UNCLASSIFIED" ||nyc_clean$OFNS_DESC[i] == "MURDER & NON-NEGL. MANSLAUGHTER"){
+    nyc_clean$OFNS_DESC[i] <- "MURDER"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "INTOXICATED & IMPAIRED DRIVING" || nyc_clean$OFNS_DESC[i] == "INTOXICATED/IMPAIRED DRIVING"){
+    nyc_clean$OFNS_DESC[i] <- "DUI"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "KIDNAPPING" || nyc_clean$OFNS_DESC[i] == "KIDNAPPING AND RELATED OFFENSES"|| nyc_clean$OFNS_DESC[i] == "KIDNAPPING & RELATED OFFENSES"){
+    nyc_clean$OFNS_DESC[i] <- "KIDNAPPING RELATED"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "LOITERING" || nyc_clean$OFNS_DESC[i] == "LOITERING FOR DRUG PURPOSES"|| nyc_clean$OFNS_DESC[i] == "LOITERING FOR PROSTITUTION OR"|| nyc_clean$OFNS_DESC[i] == "LOITERING/DEVIATE SEX"|| nyc_clean$OFNS_DESC[i] == "LOITERING/GAMBLING (CARDS, DIC"){
+    nyc_clean$OFNS_DESC[i] <- "LOITERING RELATED"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "OFF. AGNST PUB ORD SENSBLTY &" || nyc_clean$OFNS_DESC[i] == "OFFENSES AGAINST MARRIAGE UNCL"|| nyc_clean$OFNS_DESC[i] == "OFFENSES AGINST PUBLIC ADMINI"|| nyc_clean$OFNS_DESC[i] == "OFFENSES AGAINST PUBLIC SAFETY"){
+    nyc_clean$OFNS_DESC[i] <- "MISC. OFFENSES"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "OFFENSES AGAINST THE PERSON" || nyc_clean$OFNS_DESC[i] == "OFFENSES RELATED TO CHILDREN"){
+    nyc_clean$OFNS_DESC[i] <- "OFFENSES AGAINST HUMANS"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "OTHER OFFENSES RELATED TO THEF" || nyc_clean$OFNS_DESC[i] == "THEFT-FRAUD"|| nyc_clean$OFNS_DESC[i] == "THEFT OF SERVICES"){
+    nyc_clean$OFNS_DESC[i] <- "THEFT RELATED"
+    message(i)
+  } else if (nyc_clean$OFNS_DESC[i] == "RAPE" || nyc_clean$OFNS_DESC[i] == "SEX CRIMES"){
+    nyc_clean$OFNS_DESC[i] <- "RAPE OR SEX CRIME"
+    message(i)
+  }
+}
+
+#reduced down to 53
+#time to delete a few
+
+useless_crimes <- c("ABORTION", "AGRICULTURE & MRKTS LAW-UNCLASSIFIED", "ALCOHOLIC BEVERAGE CONTROL LAW", "ANTICIPATORY OFFENSES", "CHILD ABANDONMENT/NON SUPPORT", 
+                    "DISORDERLY CONDUCT", "DISRUPTION OF A RELIGIOUS SERV", "ENDAN WELFARE INCOMP", "ESCAPE 3", "FORTUNE TELLING", "GAMBLING", "JOSTLING", "NEW YORK CITY HEALTH CODE", 
+                    "NYS LAWS-UNCLASSIFIED FELONY", "NYS LAWS-UNCLASSIFIED VIOLATION", "OTHER STATE LAWS", "OTHER STATE LAWS (NON PENAL LA", "OTHER STATE LAWS (NON PENAL LAW)", 
+                    "OTHER TRAFFIC INFRACTION", "PROSTITUTION & RELATED OFFENSES", "THEFT,RELATED OFFENSES,UNCLASS", "UNDER THE INFLUENCE OF DRUGS", "UNLAWFUL POSS. WEAP. ON SCHOOL")
+
+nyc_2 <- subset(nyc_clean, !nyc_clean$OFNS_DESC %in% useless_crimes)
+#my massive horrendous for loop had some mistakes, going back and fixing those
+var <- "OFNS_DESC"
+cd_old <- c("UNAUTHORIZED USE OF A VEHICLE", "VEHICLE AND TRAFFIC LAWS")
+nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old, "VEHICLE/TRAFFIC LAWS RELATED",x))
+
+cd_old_2 <- c("HOMICIDE-NEGLIGENT,UNCLASSIFIE")
+nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_2, "MURDER",x))
+
+cd_old_3 <- c("OFFENSES AGAINST PUBLIC ADMINI")
+nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_3, "MISC. OFFENSES",x))
+
+
+cd_old_4 <- c("RAPE")
+nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_4, "RAPE OR SEX CRIME",x))
+
+cd_old_5 <- c("ADMINISTRATIVE CODES")
+nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_5, "MISCELLANEOUS PENAL LAW",x))
+as.data.frame(table(nyc_2$OFNS_DESC))
+
+#down to 26...much much better
+
+# nyc_3 <- subset(nyc_2, OFNS_DESC %in% names(tt[tt > 15000]))
+
+
+#save all that crap
+#that for loop literally ran for DAYS. Never doing a loop in R every again. 
+
+
+write.csv(nyc_2, "NYPD_Crime_Data_CLEAN_2.csv")
 # sum(is.na(nyc_clean$LAW_CAT_CD)) 
 #save cleaned data so I don't have to do all this again
-write.csv(nyc_clean, "NYPD_Crime_Data_CLEAN.csv")
+# write.csv(nyc_clean, "NYPD_Crime_Data_CLEAN.csv")
 
 # as.data.frame(table(is.na(nyc_clean)))
 # 
