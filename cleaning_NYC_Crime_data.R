@@ -183,7 +183,11 @@ nyc$LOC_OF_OCCUR_DESC[nyc$PREM_TYP_DESC=='OTHER'] <- 1
 #Time for Time
   #want to bin time into 1-hour segments
   #divide Hour:Minute:Second into three separate columns
+nyc$Time <- nyc$CMPLNT_FR_TM
+library(chron)
+nyc$Time2 <- 60 * 24 * as.numeric(times(nyc$Time))
 nyc <- separate(nyc, CMPLNT_FR_TM, sep= ":", into=c("Hour", "Minute", "Second"), fill='right', remove=FALSE)
+
 
 #separate date, similarly, into Month, Day, Year
 nyc <- separate(nyc, CMPLNT_FR_DT, sep= "/", into=c("Month", "Day", "Year"), fill='right', remove=FALSE)
@@ -194,6 +198,9 @@ as.data.frame(table(nyc$Year))
   #2005 is also a little skewed, though. Even though it has 10,000+ events, all the other years have nearly half a million data points. 
 yearsIWant <- c("2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016")
 nyc <- subset(nyc, nyc$Year %in% yearsIWant)
+
+nyc <- subset(nyc, !nyc$Day=="01")
+unique(nyc$Day)
 
 #create month-day column for use in holiday determination
 nyc$MonthDay <- paste( nyc$Month, nyc$Day, sep="-" )
@@ -243,8 +250,9 @@ unique(nyc$LAW_CAT_CD) #...3 different classifiers
     #...or I could go through and find previous incidences where the PD_DESC is the same OFNS_DESC is not NA, and substitute that OFNS_DESC for the NA
     #probably the better way to go....but probs a lot more involved. Ugh. 
 
-#solution....blimey this takes forever. Just FYI. 
+#solution....this takes a bit. Just FYI. 
 #Feel free to delete the message(i) lines if you don't want to see a bazilion numbers on your screen
+#I use it as a progress measurement, but that's just me
 for (i in 1:nrow(nyc)){
   if (is.na(nyc$OFNS_DESC[i])){
     crimetype=nyc$PD_DESC[i]
@@ -267,9 +275,9 @@ for (i in 1:nrow(nyc)){
 #reorder the columns to put similar variables together 
 #don't care about Minute or Second, so not including those
 #nixing PD_DESC since I'm going to use OFNS_DESC as my response variable
-nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Date", "Month", "Day", "Year", "MonthDay", 
-      "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", 
-      "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PARKS_NM", "HADEVELOPT")]
+nyc_clean <- nyc[,c("CMPLNT_FR_DT", "Time2","Date", "Month", "Day", "Year", "MonthDay", 
+                    "Holiday", "DayName", "Weekend", "CMPLNT_FR_TM", "Hour", "OFNS_DESC", "LAW_CAT_CD", 
+                    "JURIS_DESC", "BORO_NM", "LOC_OF_OCCUR_DESC", "PARKS_NM", "HADEVELOPT")]
 
 
 ####################################################################################################################################################
@@ -287,7 +295,8 @@ nyc_2 <- subset(nyc_clean, !nyc_clean$OFNS_DESC %in% useless_crimes)
 #Combine similar crimes
   #So I originally did this with a for loop and it ran for DAYS. Not joking. I'm never running a for loop in R ever again if I can help it. 
   #the original for-loop is commented and located at the bottom of this code. 
-  #I rewrote the code using apply functions, but I didn't run it to test it. 
+  #these apply functions literally took about a minute to finish. versus FOUR FREAKING DAYS. Never ever again. Lesson learned. 
+
 var <- "OFNS_DESC"
 
 cd_old <- c("UNAUTHORIZED USE OF A VEHICLE", "VEHICLE AND TRAFFIC LAWS")
@@ -332,13 +341,17 @@ nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_13, "OFFENSES
 cd_old_14 <- c("OTHER OFFENSES RELATED TO THEF", "THEFT-FRAUD", "THEFT OF SERVICES")
 nyc_2[,var] <- sapply(nyc_2[,var],function(x) ifelse(x %in% cd_old_14, "THEFT RELATED",x))
 
+as.data.frame(table(nyc_2$OFNS_DESC))
+#down to only 26 crimes. Sweet. 
+
 
 ####################################################################################################################################################
 
 #                                                                   SAVE CLEANED DATA FILE 
 
 ####################################################################################################################################################
-write.csv(nyc_2, "NYPD_Crime_Data_CLEAN_2.csv")
+write.csv(nyc_2, "NYPD_Crime_Data_CLEAN_E.csv")
+
 
 ####################################################################################################################################################
 

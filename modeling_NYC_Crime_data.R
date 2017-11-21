@@ -75,7 +75,7 @@ m_everything <- stan_glmer(as.numeric(as.factor(OFNS_DESC)) ~ Weekend + Holiday 
 summary(m2)
 
 multi_1 <- brm(formula=as.factor(OFNS_DESC)~Hour+Holiday+(1|BORO_NM), data=nyc_small, 
-              family=categorical(), link=logit, warmup=1000, iter=2000, chains=4)
+              family=categorical(), warmup=1000, iter=2000, chains=4)
 # m1b <- stan_glmer(LAW_CAT_CD ~ BORO_NM + (1|Hour), data = nyc_small)
 
 # m2 <- multinom(LAW_CAT_CD ~ factor(BORO_NM) + factor(Hour), data = nyc_small)
