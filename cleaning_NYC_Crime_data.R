@@ -345,12 +345,22 @@ as.data.frame(table(nyc_2$OFNS_DESC))
 #down to only 26 crimes. Sweet. 
 
 
+#narrow it down to modeling differences between Misc. Offenses and criminal mischief
+#the ratio between these two, which one is more likely, varies by hours and neighborhoods
+nyc_M <- subset(nyc_2, nyc_2$LAW_CAT_CD =="MISDEMEANOR") #ultimately an unnecessary step, but part of the original thought process
+
+nyc_M_small <- subset(nyc_M, nyc_M$OFNS_DESC %in% c("MISC. OFFENSES", "CRIMINAL MISCHIEF & RELATED OF"))
+
+nyc_2010 <- subset(nyc_M_small, nyc_M_small$Year==2010)
+
+
+
 ####################################################################################################################################################
 
 #                                                                   SAVE CLEANED DATA FILE 
 
 ####################################################################################################################################################
-write.csv(nyc_2, "NYPD_Crime_Data_CLEAN_E.csv")
+write.csv(nyc_2010, "NYPD_Crime_Data_CLEAN_2010.csv")
 
 
 ####################################################################################################################################################
