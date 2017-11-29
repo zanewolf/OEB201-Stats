@@ -6,6 +6,8 @@
     # Filled in or deleted mising Location data
     # Organized and parsed time variables, added indicator variables
     # Filled in missing Crime Data
+    # Simplified the response varialbe
+    # Subsetted data for the modeling script
 
 
   # Date Last Updated: 11/18/2017
